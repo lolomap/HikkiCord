@@ -3,6 +3,7 @@ import sys
 
 import winshell
 from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
 from pywinauto import Application
 import pypresence as discord
 import getpass
@@ -58,12 +59,6 @@ def process_url(url, browser):
         # hname = browser.find_element_by_css_selector('.style-scope.ytd-video-primary-info-renderer')
         hname = browser.find_elements_by_tag_name('h1')
         print(hname)
-        '''
-        if hname:
-            name = hname[0].find_element_by_tag_name('ytd-formatted-string').text
-        else:
-            return None
-        '''
         name = hname[1].text
         print(name)
         return {'name': name, 'type': 'yt_video'}
@@ -89,20 +84,30 @@ def get_url(client):
             if url is None:
                 return ''
             return url
-    except Exception:
+    except Exception as e:
+        print(e)
         return None
 
 
 def main():
     add_to_startup()
 
-    path_driver = 'phantomjs.exe'
-    browser = webdriver.PhantomJS(executable_path=path_driver, service_log_path=None)
-    presence = discord.Presence('697438501473615942')
-    # presence.connect()
-
     settings = open('settings.txt')
     client = settings.read()
+
+    if client == 'opera':
+        path_driver = 'phantomjs.exe'
+        browser = webdriver.PhantomJS(executable_path=path_driver, service_log_path=None)
+    elif client == 'chrome':
+        chrome_options = Options()
+        chrome_options.add_argument('--headless')
+        chrome_options.add_argument('--window-size=1920x1080')
+        path_driver = 'chromedriver.exe'
+        browser = webdriver.Chrome(executable_path=path_driver, service_log_path=None, options=chrome_options)
+    else:
+        return
+
+    presence = discord.Presence('697438501473615942')
 
     url = ''
     closed = True
@@ -121,6 +126,8 @@ def main():
         print(url)
         if url is None:
             continue
+        if client == 'chrome':
+            url = 'http://' + url
         anime_info = process_url(url, browser)
         name = None
         content_type = None
