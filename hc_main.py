@@ -47,7 +47,7 @@ def update_ytvideo(presence, video_name, is_video, url=None):
         presence.update(details=watching_info, instance=False)
 
 
-def process_url(url, browser):
+def process_url(url, browser, client):
     if url.find('yummyanime.club/catalog/item/') >= 0:
         browser.get(url)
         name = browser.find_element_by_tag_name('h1').text
@@ -56,10 +56,14 @@ def process_url(url, browser):
         return {'name': name, 'type': 'anime'}
     elif url.find('youtube.com/watch?') >= 0:
         browser.get(url)
-        # hname = browser.find_element_by_css_selector('.style-scope.ytd-video-primary-info-renderer')
         hname = browser.find_elements_by_tag_name('h1')
         print(hname)
-        name = hname[1].text
+        if client == 'opera':
+            name = hname[1].text
+        elif client == 'chrome':
+            name = hname[0].text
+        else:
+            return None
         print(name)
         return {'name': name, 'type': 'yt_video'}
     else:
@@ -126,9 +130,12 @@ def main():
         print(url)
         if url is None:
             continue
-        if client == 'chrome':
-            url = 'http://' + url
-        anime_info = process_url(url, browser)
+        if client == 'opera':
+            anime_info = process_url(url, browser, client)
+        elif client == 'chrome':
+            anime_info = process_url('http://'+url, browser, client)
+        else:
+            return
         name = None
         content_type = None
         if anime_info is not None:
