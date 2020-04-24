@@ -3,10 +3,13 @@ import sys
 
 import winshell
 from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
+# from selenium.webdriver.chrome.options import Options
 from pywinauto import Application
 import pypresence as discord
 import getpass
+
+from win32api import Sleep
+
 USER_NAME = getpass.getuser()
 
 
@@ -58,78 +61,89 @@ def process_url(url, browser, client):
         browser.get(url)
         hname = browser.find_elements_by_tag_name('h1')
         print(hname)
+        '''
         if client == 'opera':
             name = hname[1].text
         elif client == 'chrome':
             name = hname[0].text
         else:
             return None
+        '''
+        name = hname[1].text
         print(name)
         return {'name': name, 'type': 'yt_video'}
     else:
         return None
 
 
-def get_url(client):
+def get_browser(client):
+    while True:
+        try:
+            if client == 'opera':
+                app = Application(backend='uia')
+                app.connect(title_re=".*Opera.*", visible_only=True)
+                dlg = app.top_window()
+                bar = dlg.child_window(title="Поле адреса", control_type="Edit")
+                return bar
+            elif client == 'chrome':
+                app = Application(backend='uia')
+                app.connect(title_re=".*Google Chrome.*", visible_only=True)
+                dlg = app.top_window()
+                bar = dlg.child_window(title="Адресная строка и строка поиска", control_type="Edit")
+                return bar
+            else:
+                return None
+        except Exception as e:
+            print('Browser not found', e)
+            continue
+
+
+def get_url(bar, client):
     try:
-        if client == 'opera':
-            app = Application(backend='uia')
-            app.connect(title_re=".*Opera.*")
-            dlg = app.top_window()
-            url = dlg.child_window(title="Поле адреса", control_type="Edit").get_value()
-            if url is None:
-                return ''
-            return url
-        elif client == 'chrome':
-            app = Application(backend='uia')
-            app.connect(title_re=".*Google Chrome.*")
-            dlg = app.top_window()
-            url = dlg.child_window(title="Адресная строка и строка поиска", control_type="Edit").get_value()
-            if url is None:
-                return ''
-            return url
+        url = bar.get_value()
+        if url is None:
+            return ''
+        return url
     except Exception as e:
         print(e)
         return None
 
 
+# TODO: connect to browser once and track is browser opened from other thread
 def main():
     add_to_startup()
-
+    # TODO: waiting discord
     settings = open('settings.txt')
     client = settings.read()
 
-    if client == 'opera':
-        path_driver = 'phantomjs.exe'
-        browser = webdriver.PhantomJS(executable_path=path_driver, service_log_path=None)
-    elif client == 'chrome':
-        chrome_options = Options()
-        chrome_options.add_argument('--headless')
-        chrome_options.add_argument('--window-size=1920x1080')
-        path_driver = 'chromedriver.exe'
-        browser = webdriver.Chrome(executable_path=path_driver, service_log_path=None, options=chrome_options)
-    else:
-        return
+    path_driver = 'phantomjs.exe'
+    browser = webdriver.PhantomJS(executable_path=path_driver, service_log_path=None)
 
     presence = discord.Presence('697438501473615942')
-
+    presence.connect()
     url = ''
-    closed = True
+
+    bar = get_browser(client)
+
     while True:
+        Sleep(60000)
         last_url = url
-        url = get_url(client)
+        url = get_url(bar, client)
+
+        if url is None:
+            presence.close()
+            bar = get_browser(client)
+            if bar:
+                presence.connect()
+            else:
+                continue
+
         if last_url == url:
             continue
-        if url is None and not closed:
-            presence.close()
-            closed = True
-            continue
-        elif closed:
-            presence.connect()
-            closed = False
         print(url)
         if url is None:
             continue
+
         if client == 'opera':
             anime_info = process_url(url, browser, client)
         elif client == 'chrome':
