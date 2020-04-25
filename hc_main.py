@@ -113,8 +113,9 @@ def get_url(bar, client):
 def main():
     add_to_startup()
     # TODO: waiting discord
-    settings = open('settings.txt')
-    client = settings.read()
+    settings = open('settings.txt').read().split('\n')
+    client = settings[0].split(':')[1].lower()
+    delay = int(settings[1].split(':')[1])*1000
 
     path_driver = 'phantomjs.exe'
     browser = webdriver.PhantomJS(executable_path=path_driver, service_log_path=None)
@@ -126,7 +127,6 @@ def main():
     bar = get_browser(client)
 
     while True:
-        Sleep(60000)
         last_url = url
         url = get_url(bar, client)
 
@@ -163,6 +163,8 @@ def main():
             update_ytvideo(presence, name, True, url)
         else:
             continue
+
+        Sleep(delay)
 
     presence.close()
 
