@@ -2,10 +2,8 @@ import os
 import sys
 
 import winshell
-from selenium import webdriver
-# from selenium.webdriver.chrome.options import Options
-from pywinauto import Application
-import pypresence as discord
+import pywinauto
+from discord_api import DiscAPI
 import getpass
 
 from win32api import Sleep
@@ -28,145 +26,78 @@ def add_to_startup():
         pass
 
 
-def update_anime(presence, anime_name, is_anime, url=None):
-    if is_anime:
-        watching_info = 'Смотрит аниме: ' + anime_name
-        if url is None:
-            return
-        presence.update(details=watching_info, instance=False)
-    else:
-        watching_info = 'Ничего не делает'
-        presence.update(details=watching_info, instance=False)
-
-
-def update_ytvideo(presence, video_name, is_video, url=None):
-    if is_video:
-        watching_info = 'Смотрит видео: ' + video_name
-        if url is None:
-            return
-        presence.update(details=watching_info, instance=False)
-    else:
-        watching_info = 'Ничего не делает'
-        presence.update(details=watching_info, instance=False)
-
-
-def process_url(url, browser, client):
-    if url.find('yummyanime.club/catalog/item/') >= 0:
-        browser.get(url)
-        name = browser.find_element_by_tag_name('h1').text
-        print(name)
-
-        return {'name': name, 'type': 'anime'}
-    elif url.find('youtube.com/watch?') >= 0:
-        browser.get(url)
-        hname = browser.find_elements_by_tag_name('h1')
-        print(hname)
-        '''
-        if client == 'opera':
-            name = hname[1].text
-        elif client == 'chrome':
-            name = hname[0].text
-        else:
-            return None
-        '''
-        name = hname[1].text
-        print(name)
-        return {'name': name, 'type': 'yt_video'}
-    else:
-        return None
-
-
-def get_browser(client):
-    while True:
-        try:
-            if client == 'opera':
-                app = Application(backend='uia')
-                app.connect(title_re=".*Opera.*", visible_only=True)
-                dlg = app.top_window()
-                bar = dlg.child_window(title="Поле адреса", control_type="Edit")
-                return bar
-            elif client == 'chrome':
-                app = Application(backend='uia')
-                app.connect(title_re=".*Google Chrome.*", visible_only=True)
-                dlg = app.top_window()
-                bar = dlg.child_window(title="Адресная строка и строка поиска", control_type="Edit")
-                return bar
-            else:
-                return None
-        except Exception as e:
-            print('Browser not found', e)
-            continue
-
-
-def get_url(bar, client):
+def get_title(win_name):
     try:
-        url = bar.get_value()
-        if url is None:
-            return ''
-        return url
-    except Exception as e:
-        print(e)
+        win = pywinauto.findwindows.find_elements(title_re='.*'+win_name+'.*')[0]
+        title = win.name
+        title = title.split(' - '+win_name)[0]
+        return {'title': title, 'win_name': win.name}
+    except IndexError:
         return None
 
 
-# TODO: connect to browser once and track is browser opened from other thread
+def get_win(win_name):
+    try:
+        win = pywinauto.findwindows.find_elements(title_re='.*' + win_name + '.*')[0]
+        print(win)
+        return True
+    except IndexError:
+        return False
+
+
+def check_win_list(win_list):
+    for item in win_list:
+        if get_title(item):
+            return item
+    return None
+
+
 def main():
-    add_to_startup()
-    # TODO: waiting discord
+    # add_to_startup()
     settings = open('settings.txt').read().split('\n')
-    client = settings[0].split(':')[1].lower()
+    client_str = settings[0].split(':')[1]
     delay = int(settings[1].split(':')[1])*1000
 
-    path_driver = 'phantomjs.exe'
-    browser = webdriver.PhantomJS(executable_path=path_driver, service_log_path=None)
+    if settings[2].split(':')[1] == 'True':
+        is_yt = True
+    else:
+        is_yt = False
+    if settings[3].split(':')[1] == 'True':
+        is_anime = True
+    else:
+        is_anime = False
+    if settings[4].split(':')[1] == 'True':
+        is_ide = True
+    else:
+        is_ide = False
+    print(is_yt, is_anime, is_ide)
 
-    presence = discord.Presence('697438501473615942')
-    presence.connect()
-    url = ''
-
-    bar = get_browser(client)
-
+    disc = DiscAPI('697438501473615942')
+    disc.connect()
+    title = ''
     while True:
-        last_url = url
-        url = get_url(bar, client)
-
-        if url is None:
-            presence.close()
-            bar = get_browser(client)
-            if bar:
-                presence.connect()
-            else:
+        if is_ide:
+            ide = check_win_list(['Qt Creator', 'Visual Studio', 'Unity', 'Sublime Text', 'PyCharm'])
+            if ide is not None:
+                disc.update(DiscAPI.ContentType.IDE, ide)
                 continue
-
-        if last_url == url:
+        last_title = title
+        title = get_title(client_str)
+        if title == last_title or title is None:
             continue
-        print(url)
-        if url is None:
-            continue
-
-        if client == 'opera':
-            anime_info = process_url(url, browser, client)
-        elif client == 'chrome':
-            anime_info = process_url('http://'+url, browser, client)
+        print(title)
+        if title['win_name'].find('YouTube') >= 0 and is_yt:
+            print('here')
+            disc.update(DiscAPI.ContentType.YT_Video, title['title'])
+        elif title['win_name'].find('смотреть онлайн') >= 0 and is_anime:
+            disc.update(DiscAPI.ContentType.Anime, title['title'], 'yummyanime')
+        elif title['title'] == 'Смотреть онлайн' and is_anime:
+            disc.update(DiscAPI.ContentType.Anime, service='nekomori')
         else:
-            return
-        name = None
-        content_type = None
-        if anime_info is not None:
-            name = anime_info['name']
-            content_type = anime_info['type']
-        if name is None:
-            update_anime(presence, name, False)
-        elif content_type == 'anime':
-            update_anime(presence, name, True, url)
-        elif content_type == 'yt_video':
-            update_ytvideo(presence, name, True, url)
-        else:
-            continue
+            disc.update(DiscAPI.ContentType.No_Action)
 
         Sleep(delay)
-
-    presence.close()
+    disc.close()
 
 
 if __name__ == '__main__':
