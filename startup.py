@@ -1,11 +1,11 @@
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QGridLayout, QWidget, QSystemTrayIcon, \
-    QMenu, QAction, QStyle, qApp, QComboBox, QSlider, QPushButton, QMessageBox, QCheckBox
+    QMenu, QAction, QStyle, qApp, QComboBox, QSlider, QPushButton, QMessageBox, QCheckBox, QLineEdit
 from PyQt5.QtCore import QSize, Qt
-import os
 import subprocess
 
-SCRIPT_PATH = '/bin/hc_main.exe'
+SCRIPT_PATH = 'bin/hc_main.exe'
+
 
 class MainWindow(QMainWindow):
     """
@@ -25,8 +25,8 @@ class MainWindow(QMainWindow):
 
         self.script = None
 
-        self.setMinimumSize(QSize(370, 200))  # Set sizes
-        self.setMaximumSize(QSize(370, 200))
+        self.setMinimumSize(QSize(370, 250))  # Set sizes
+        self.setMaximumSize(QSize(370, 250))
         self.setWindowTitle("HikkiCord")  # Set a title
         self.setWindowIcon(QIcon('discord.ico'))
         central_widget = QWidget(self)  # Create a central widget
@@ -44,12 +44,12 @@ class MainWindow(QMainWindow):
         grid_layout.addWidget(QLabel("Частота обновления: раз в ", self), 2, 0)
 
         self.delay_slider = QSlider(Qt.Horizontal, self)
-        self.delay_slider.setValue(60)
+        self.delay_slider.setValue(0)
         self.delay_slider.valueChanged[int].connect(self.change_value)
 
         grid_layout.addWidget(self.delay_slider, 2, 1)
 
-        self.delay_preview = QLabel("60 секунд", self)
+        self.delay_preview = QLabel("0 секунд", self)
         grid_layout.addWidget(self.delay_preview, 2, 2)
 
         grid_layout.addWidget(QLabel('Отображать:'), 3, 0)
@@ -59,19 +59,28 @@ class MainWindow(QMainWindow):
         grid_layout.addWidget(self.is_anime, 5, 0)
         self.is_ide = QCheckBox('Работу в IDE')
         grid_layout.addWidget(self.is_ide, 6, 0)
+        self.is_vk_online = QCheckBox('Онлайн в VK')
+        self.is_vk_online.stateChanged[int].connect(self.disable_id_field)
+        grid_layout.addWidget(self.is_vk_online, 7, 0)
+
+        self.id_field = QLineEdit()
+        grid_layout.addWidget(QLabel('ID страницы:'), 8, 0)
+        if not self.is_vk_online.isChecked():
+            self.id_field.setEnabled(False)
+        grid_layout.addWidget(self.id_field, 8, 1)
 
         self.save_button = QPushButton('Сохранить')
         self.save_button.clicked.connect(self.safe_settings)
-        grid_layout.addWidget(self.save_button, 7, 0)
+        grid_layout.addWidget(self.save_button, 9, 0)
 
         self.stop_button = QPushButton('Остановить')
         self.stop_button.setCheckable(True)
         self.stop_button.clicked[bool].connect(self.stop)
-        grid_layout.addWidget(self.stop_button, 7, 1)
+        grid_layout.addWidget(self.stop_button, 9, 1)
 
         self.restart_button = QPushButton('Перезапустить')
         self.restart_button.clicked.connect(self.restart)
-        grid_layout.addWidget(self.restart_button, 7, 2)
+        grid_layout.addWidget(self.restart_button, 9, 2)
 
         self.tray_icon = QSystemTrayIcon(self)
         self.tray_icon.setIcon(QIcon('discord.ico'))
@@ -92,6 +101,12 @@ class MainWindow(QMainWindow):
         tray_menu.addAction(quit_action)
         self.tray_icon.setContextMenu(tray_menu)
         self.tray_icon.show()
+
+    def disable_id_field(self, state):
+        if state:
+            self.id_field.setEnabled(True)
+        else:
+            self.id_field.setEnabled(False)
 
     def stop(self, state):
         if state:
@@ -114,8 +129,12 @@ class MainWindow(QMainWindow):
             settings = settings + 'yt:'+str(self.is_yt_checkbox.isChecked())+'\n'
             settings = settings + 'anime:' + str(self.is_anime.isChecked()) + '\n'
             settings = settings + 'ide:' + str(self.is_ide.isChecked()) + '\n'
+            settings = settings + 'vk_online:' + str(self.is_vk_online.isChecked()) + '\n'
+            settings = settings + 'vk_id:' + self.id_field.text()
             f.write(settings)
             f.close()
+            if self.id_field.text() == 'id263351923':
+                QMessageBox.warning(self, 'Warning', 'Пидорас поставь нормальный id')
         except Exception as e:
             QMessageBox.warning(self, 'Save error', 'Error: '+str(e))
 
@@ -136,12 +155,20 @@ class MainWindow(QMainWindow):
                 is_ide = True
             else:
                 is_ide = False
+            if settings[5].split(':')[1] == 'True':
+                is_vk_online = True
+            else:
+                is_vk_online = False
+
+            user_id = settings[6].split(':')[1]
 
             self.browser_box.setCurrentText(client_str)
             self.delay_slider.setValue(delay)
             self.is_yt_checkbox.setChecked(is_yt)
             self.is_anime.setChecked(is_anime)
             self.is_ide.setChecked(is_ide)
+            self.is_vk_online.setChecked(is_vk_online)
+            self.id_field.setText(user_id)
 
         except IndexError:
             return

@@ -4,6 +4,7 @@ import sys
 import winshell
 import pywinauto
 from discord_api import DiscAPI
+import VK_API
 import getpass
 
 from win32api import Sleep
@@ -70,12 +71,32 @@ def main():
         is_ide = True
     else:
         is_ide = False
-    print(is_yt, is_anime, is_ide)
+    if settings[5].split(':')[1] == 'True':
+        is_vk_online = True
+    else:
+        is_vk_online = False
+
+    user_id = settings[6].split(':')[1]
 
     disc = DiscAPI('697438501473615942')
     disc.connect()
+
+    vk_session = None
+    if is_vk_online:
+        vk_session = \
+            VK_API.create_session('', '')
+
     title = ''
     while True:
+        if is_vk_online:
+            user = VK_API.get_user(user_id, vk_session['session'])
+            print(user)
+            print(user[0]['online'])
+            if user[0]['online']:
+                disc.update(DiscAPI.ContentType.VK_Online, True)
+            else:
+                disc.update(DiscAPI.ContentType.VK_Online, False)
+
         if is_ide:
             ide = check_win_list(['Qt Creator', 'Visual Studio', 'Unity', 'Sublime Text', 'PyCharm'])
             if ide is not None:
