@@ -1,30 +1,11 @@
-import os
-import sys
-
-import winshell
 import pywinauto
 from discord_api import DiscAPI
-import VK_API
+import vk
 import getpass
 
 from win32api import Sleep
 
 USER_NAME = getpass.getuser()
-
-
-def add_to_startup():
-    try:
-        startFile = os.path.abspath(sys.argv[0])
-        startup = winshell.startup()
-        winshell.CreateShortcut(
-            Path=os.path.join(startup, "hikkicord.lnk"),
-            Target=startFile,
-            Icon=(startFile, 0),
-            Description="HikkiCord",
-            StartIn=os.path.abspath(None)
-        )
-    except Exception:
-        pass
 
 
 def get_title(win_name):
@@ -54,7 +35,7 @@ def check_win_list(win_list):
 
 
 def main():
-    # add_to_startup()
+
     settings = open('settings.txt').read().split('\n')
     client_str = settings[0].split(':')[1]
     delay = int(settings[1].split(':')[1])*1000
@@ -78,46 +59,69 @@ def main():
 
     user_id = settings[6].split(':')[1]
 
-    disc = DiscAPI('697438501473615942')
-    disc.connect()
+    disc = None
+
+    while True:
+        try:
+            disc = DiscAPI('697438501473615942')
+            disc.connect()
+            break
+        except Exception as e:
+            print(e)
+            continue
 
     vk_session = None
     if is_vk_online:
         vk_session = \
-            VK_API.create_session('', '')
-
+            vk.create_session('', '')
+    is_disc_closed = False
     title = ''
     while True:
-        if is_vk_online:
-            user = VK_API.get_user(user_id, vk_session['session'])
-            print(user)
-            print(user[0]['online'])
-            if user[0]['online']:
-                disc.update(DiscAPI.ContentType.VK_Online, True)
-            else:
-                disc.update(DiscAPI.ContentType.VK_Online, False)
+        try:
+            if is_vk_online:
+                user = vk.get_user(user_id, vk_session['session'])
+                print(user)
+                print(user[0]['online'])
+                if user[0]['online']:
+                    disc.update(DiscAPI.ContentType.VK_Online, True)
+                else:
+                    disc.update(DiscAPI.ContentType.VK_Online, False)
 
-        if is_ide:
-            ide = check_win_list(['Qt Creator', 'Visual Studio', 'Unity', 'Sublime Text', 'PyCharm'])
-            if ide is not None:
-                disc.update(DiscAPI.ContentType.IDE, ide)
+            if is_ide:
+                ide = check_win_list(['Qt Creator', 'Visual Studio', 'Unity', 'Sublime Text', 'PyCharm'])
+                if ide is not None:
+                    disc.update(DiscAPI.ContentType.IDE, ide)
+                    continue
+            last_title = title
+            title = get_title(client_str)
+            if title == last_title or title is None:
                 continue
-        last_title = title
-        title = get_title(client_str)
-        if title == last_title or title is None:
-            continue
-        print(title)
-        if title['win_name'].find('YouTube') >= 0 and is_yt:
-            print('here')
-            disc.update(DiscAPI.ContentType.YT_Video, title['title'])
-        elif title['win_name'].find('смотреть онлайн') >= 0 and is_anime:
-            disc.update(DiscAPI.ContentType.Anime, title['title'], 'yummyanime')
-        elif title['title'] == 'Смотреть онлайн' and is_anime:
-            disc.update(DiscAPI.ContentType.Anime, service='nekomori')
-        else:
-            disc.update(DiscAPI.ContentType.No_Action)
+            print(title)
+            if title['win_name'].find('YouTube') >= 0 and is_yt:
+                print('here')
+                if is_disc_closed:
+                    disc.connect()
+                    is_disc_closed = False
+                disc.update(DiscAPI.ContentType.YT_Video, title['title'])
+            elif title['win_name'].find('смотреть онлайн') >= 0 and is_anime:
+                if is_disc_closed:
+                    disc.connect()
+                    is_disc_closed = False
+                disc.update(DiscAPI.ContentType.Anime, title['title'], 'yummyanime')
+            elif title['title'] == 'Смотреть онлайн' and is_anime:
+                if is_disc_closed:
+                    disc.connect()
+                    is_disc_closed = False
+                disc.update(DiscAPI.ContentType.Anime, service='nekomori')
+            else:
+                disc.update(DiscAPI.ContentType.No_Action)
+                disc.close()
+                is_disc_closed = True
 
-        Sleep(delay)
+            Sleep(delay)
+        except Exception as e:
+            print(e)
+            continue
     disc.close()
 
 

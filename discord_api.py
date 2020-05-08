@@ -37,18 +37,18 @@ class DiscAPI:
                 name = name.split(' смотреть онлайн')[0]
                 watching_info = 'Смотрит аниме: '
                 if self.vk_online:
-                    self.presence.update(details=watching_info, state=name[5:], large_image='hc_icon',
+                    self.presence.update(details=watching_info, state=name[5:], large_image='yummy',
                                          instance=False, small_image='vk_online', small_text='Онлайн в VK')
                 else:
-                    self.presence.update(details=watching_info, state=name[5:], large_image='hc_icon',
+                    self.presence.update(details=watching_info, state=name[5:], large_image='yummy',
                                          instance=False, small_image='vk_offline')
             elif service == 'nekomori':
                 watching_info = 'Смотрит аниме на nekomori'
                 if self.vk_online:
-                    self.presence.update(details=watching_info, large_image='hc_icon',
+                    self.presence.update(details=watching_info, large_image='neko',
                                          instance=False, small_image='vk_online', small_text='Онлайн в VK')
                 else:
-                    self.presence.update(details=watching_info, large_image='hc_icon',
+                    self.presence.update(details=watching_info, large_image='neko',
                                          instance=False, small_image='vk_offline')
             else:
                 watching_info = 'Смотрит аниме'
@@ -64,19 +64,31 @@ class DiscAPI:
             watching_info = 'Смотрит видео: '
             print(name, watching_info)
             if self.vk_online:
-                self.presence.update(details=watching_info, state=name, large_image='hc_icon',
+                self.presence.update(details=watching_info, state=name, large_image='youtube',
                                      instance=False, small_image='vk_online', small_text='Онлайн в VK')
             else:
-                self.presence.update(details=watching_info, state=name, large_image='hc_icon',
+                self.presence.update(details=watching_info, state=name, large_image='youtube',
                                      instance=False, small_image='vk_offline')
             return True
         elif content_type == DiscAPI.ContentType.IDE:
             watching_info = 'Работает в:'
+            image = ''
+            if name == 'PyCharm':
+                image = 'pycharm'
+            elif name == 'Qt Creator':
+                image = 'qt'
+            elif name == 'Visual Studio':
+                image = 'visual_studio'
+            elif name == 'Unity':
+                image = 'unity'
+            elif name == 'Sublime Text':
+                image = 'sublime'
+
             if self.vk_online:
-                self.presence.update(details=watching_info, state=name, large_image='hc_icon',
+                self.presence.update(details=watching_info, state=name, large_image=image,
                                      instance=False, small_image='vk_online', small_text='Онлайн в VK')
             else:
-                self.presence.update(details=watching_info, state=name, large_image='hc_icon',
+                self.presence.update(details=watching_info, state=name, large_image=image,
                                      instance=False, small_image='vk_offline')
         elif content_type == DiscAPI.ContentType.VK_Online:
             if name:
